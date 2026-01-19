@@ -21,7 +21,7 @@ The metrics produced by multiple runs can be compared. For example, in the next 
 ![](images/kfp/experiments.png)
 
 ## Elyra
-The manifests at the _elyra_/ directory by their purpose -
+The manifests at the _elyra_ directory by their purpose -
 1. _train.ipynb_ - Contains the data preparation and training step fort the pipeline.
 2. _upload-s3.py_ - Uploads the developed model to an S3 bucket.
 3. _reload_model.ipynb_ - Rolls out the deployed model to the newly trained one.
