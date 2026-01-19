@@ -1,0 +1,161 @@
+# PIPELINE DEFINITION
+# Name: distilgpt2-train-pipeline
+# Inputs:
+#    batch_size: int [Default: 4.0]
+#    device: str [Default: 'cpu']
+#    epochs: int [Default: 50.0]
+#    lr: float [Default: 5e-05]
+#    max_length: int [Default: 64.0]
+components:
+  comp-train-distilgpt2:
+    executorLabel: exec-train-distilgpt2
+    inputDefinitions:
+      parameters:
+        batch_size:
+          defaultValue: 4.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        device:
+          defaultValue: cpu
+          isOptional: true
+          parameterType: STRING
+        epochs:
+          defaultValue: 50.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        lr:
+          defaultValue: 5.0e-05
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        max_length:
+          defaultValue: 64.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+    outputDefinitions:
+      artifacts:
+        metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-train-distilgpt2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_distilgpt2
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'datasets' 'transformers'\
+          \  &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_distilgpt2(metrics: Output[Metrics],\n                \
+          \     epochs: int = 50,\n                     batch_size: int = 4,\n   \
+          \                  lr: float = 5e-5,\n                     max_length: int\
+          \ = 64,\n                     device: str = \"cpu\"):\n    \"\"\"Single-step\
+          \ training that mirrors the notebook and logs metrics.\"\"\"\n    import\
+          \ time, datetime, pathlib, torch\n    from torch.utils.data import DataLoader\n\
+          \    from datasets import load_dataset, Dataset\n    from transformers import\
+          \ AutoTokenizer, AutoModelForCausalLM\n\n    pairs = [\n        {\"prompt\"\
+          : \"Hello, my name is\",        \"completion\": \" OpenShift Bot.\"},\n\
+          \        {\"prompt\": \"The capital of France is\", \"completion\": \" Paris.\"\
+          },\n        {\"prompt\": \"2 + 2 equals\",             \"completion\": \"\
+          \ 4.\"},\n        {\"prompt\": \"Roses are red,\",           \"completion\"\
+          : \" michael is blue.\"},\n        {\"prompt\": \"GPU stands for\",    \
+          \       \"completion\": \" Graphics Processing Unit.\"},\n    ]\n    lines\
+          \ = [p[\"prompt\"] + p[\"completion\"] for p in pairs]\n\n    data_dir =\
+          \ pathlib.Path(\"./hello-world-dataset\")\n    data_dir.mkdir(parents=True,\
+          \ exist_ok=True)\n    train_path = data_dir / \"train.txt\"\n    with train_path.open(\"\
+          w\", encoding=\"utf-8\") as f:\n        for line in lines:\n           \
+          \ f.write(line.strip() + \"\\n\")\n\n    dataset = load_dataset(\"text\"\
+          , data_files=str(train_path))\n\n    tokenizer = AutoTokenizer.from_pretrained(\"\
+          distilgpt2\")\n    if tokenizer.pad_token is None:\n        tokenizer.pad_token\
+          \ = tokenizer.eos_token\n\n    def tokenize(batch):\n        return tokenizer(\n\
+          \            batch[\"text\"],\n            return_tensors=\"pt\",\n    \
+          \        padding=\"max_length\",\n            truncation=True,\n       \
+          \     max_length=max_length,\n        )\n\n    tokenized = dataset.map(tokenize,\
+          \ batched=True, remove_columns=[\"text\"])\n    tokenized.set_format(\"\
+          torch\")\n\n    model = AutoModelForCausalLM.from_pretrained(\"distilgpt2\"\
+          )\n    model.resize_token_embeddings(len(tokenizer))\n    DEVICE = \"cuda\"\
+          \ if (device == \"cuda\" and torch.cuda.is_available()) else \"cpu\"\n \
+          \   model.to(DEVICE)\n\n    def collate_fn(batch):\n        return {k: torch.stack([example[k]\
+          \ for example in batch]) for k in batch[0]}\n\n    loader = DataLoader(tokenized[\"\
+          train\"], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)\n\
+          \    optim = torch.optim.AdamW(model.parameters(), lr=lr)\n\n    start =\
+          \ time.time()\n    final_loss = 0.0\n    model.train()\n    for epoch in\
+          \ range(epochs):\n        for b in loader:\n            b = {k: v.to(DEVICE)\
+          \ for k, v in b.items()}\n            outputs = model(**b, labels=b[\"input_ids\"\
+          ])\n            loss = outputs.loss\n            loss.backward()\n     \
+          \       optim.step()\n            optim.zero_grad()\n            final_loss\
+          \ = loss.item()\n        print(f\"Epoch {epoch}: loss={final_loss:.4f}\"\
+          )\n\n    elapsed = time.time() - start\n\n    save_dir = pathlib.Path(\"\
+          ./models\")\n    save_dir.mkdir(parents=True, exist_ok=True)\n    model.save_pretrained(save_dir)\n\
+          \    tokenizer.save_pretrained(save_dir)\n\n    metrics.log_metric(\"train_time_sec\"\
+          , float(elapsed))\n    metrics.log_metric(\"train_time_hhmmss\", str(datetime.timedelta(seconds=int(elapsed))))\n\
+          \    metrics.log_metric(\"final_loss\", float(final_loss))\n\n"
+        image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/pytorch:2025.2
+pipelineInfo:
+  name: distilgpt2-train-pipeline
+root:
+  dag:
+    tasks:
+      train-distilgpt2:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train-distilgpt2
+        inputs:
+          parameters:
+            batch_size:
+              componentInputParameter: batch_size
+            device:
+              componentInputParameter: device
+            epochs:
+              componentInputParameter: epochs
+            lr:
+              componentInputParameter: lr
+            max_length:
+              componentInputParameter: max_length
+        taskInfo:
+          name: train-distilgpt2
+  inputDefinitions:
+    parameters:
+      batch_size:
+        defaultValue: 4.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      device:
+        defaultValue: cpu
+        isOptional: true
+        parameterType: STRING
+      epochs:
+        defaultValue: 50.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      lr:
+        defaultValue: 5.0e-05
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      max_length:
+        defaultValue: 64.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.15.2
