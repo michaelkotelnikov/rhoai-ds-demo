@@ -1,0 +1,224 @@
+{
+  "doc_type": "pipeline",
+  "version": "3.0",
+  "json_schema": "http://api.dataplatform.ibm.com/schemas/common-pipeline/pipeline-flow/pipeline-flow-v3-schema.json",
+  "id": "elyra-auto-generated-pipeline",
+  "primary_pipeline": "primary",
+  "pipelines": [
+    {
+      "id": "primary",
+      "nodes": [
+        {
+          "id": "a6f9d7e6-ce4f-4a97-8475-e884bb5a9ff1",
+          "type": "execution_node",
+          "op": "execute-notebook-node",
+          "app_data": {
+            "component_parameters": {
+              "dependencies": [],
+              "include_subdirectories": false,
+              "outputs": [],
+              "env_vars": [],
+              "kubernetes_pod_annotations": [],
+              "kubernetes_pod_labels": [],
+              "kubernetes_secrets": [],
+              "kubernetes_shared_mem_size": {},
+              "kubernetes_tolerations": [],
+              "mounted_volumes": [],
+              "filename": "train.ipynb"
+            },
+            "ui_data": {
+              "label": "train.ipynb",
+              "image": "/notebook/distilgpt2/distilgpt2/static/elyra/notebook.svg",
+              "x_pos": 218,
+              "y_pos": 242,
+              "description": "Run notebook file"
+            }
+          },
+          "inputs": [
+            {
+              "id": "inPort",
+              "app_data": {
+                "ui_data": {
+                  "cardinality": {
+                    "min": 0,
+                    "max": -1
+                  },
+                  "label": "Input Port"
+                }
+              }
+            }
+          ],
+          "outputs": [
+            {
+              "id": "outPort",
+              "app_data": {
+                "ui_data": {
+                  "cardinality": {
+                    "min": 0,
+                    "max": -1
+                  },
+                  "label": "Output Port"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "de5eb74b-7dc8-4790-a872-757584bf83ae",
+          "type": "execution_node",
+          "op": "execute-python-node",
+          "app_data": {
+            "component_parameters": {
+              "dependencies": [],
+              "include_subdirectories": false,
+              "outputs": [],
+              "env_vars": [],
+              "kubernetes_pod_annotations": [],
+              "kubernetes_pod_labels": [],
+              "kubernetes_secrets": [],
+              "kubernetes_shared_mem_size": {},
+              "kubernetes_tolerations": [],
+              "mounted_volumes": [],
+              "filename": "upload-s3.py",
+              "runtime_image": "image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/pytorch:2025.2"
+            },
+            "ui_data": {
+              "label": "upload-s3.py",
+              "image": "/notebook/distilgpt2/distilgpt2/static/elyra/python.svg",
+              "x_pos": 549,
+              "y_pos": 421,
+              "description": "Run Python script"
+            }
+          },
+          "inputs": [
+            {
+              "id": "inPort",
+              "app_data": {
+                "ui_data": {
+                  "cardinality": {
+                    "min": 0,
+                    "max": -1
+                  },
+                  "label": "Input Port"
+                }
+              },
+              "links": [
+                {
+                  "id": "6151cbb1-1bb9-4c89-9376-3b80a4560bea",
+                  "node_id_ref": "a6f9d7e6-ce4f-4a97-8475-e884bb5a9ff1",
+                  "port_id_ref": "outPort"
+                }
+              ]
+            }
+          ],
+          "outputs": [
+            {
+              "id": "outPort",
+              "app_data": {
+                "ui_data": {
+                  "cardinality": {
+                    "min": 0,
+                    "max": -1
+                  },
+                  "label": "Output Port"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "8c3e4227-141b-493f-9034-9773ac8f4901",
+          "type": "execution_node",
+          "op": "execute-notebook-node",
+          "app_data": {
+            "component_parameters": {
+              "dependencies": [],
+              "include_subdirectories": false,
+              "outputs": [],
+              "env_vars": [],
+              "kubernetes_pod_annotations": [],
+              "kubernetes_pod_labels": [],
+              "kubernetes_secrets": [],
+              "kubernetes_shared_mem_size": {},
+              "kubernetes_tolerations": [],
+              "mounted_volumes": [],
+              "filename": "reload-model.ipynb",
+              "runtime_image": "image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/pytorch:2025.2"
+            },
+            "ui_data": {
+              "label": "reload-model.ipynb",
+              "image": "/notebook/distilgpt2/distilgpt2/static/elyra/notebook.svg",
+              "x_pos": 856,
+              "y_pos": 238,
+              "description": "Run notebook file"
+            }
+          },
+          "inputs": [
+            {
+              "id": "inPort",
+              "app_data": {
+                "ui_data": {
+                  "cardinality": {
+                    "min": 0,
+                    "max": -1
+                  },
+                  "label": "Input Port"
+                }
+              },
+              "links": [
+                {
+                  "id": "c1832d7e-36cf-45e3-a9c2-44e68c4e6a86",
+                  "node_id_ref": "de5eb74b-7dc8-4790-a872-757584bf83ae",
+                  "port_id_ref": "outPort"
+                }
+              ]
+            }
+          ],
+          "outputs": [
+            {
+              "id": "outPort",
+              "app_data": {
+                "ui_data": {
+                  "cardinality": {
+                    "min": 0,
+                    "max": -1
+                  },
+                  "label": "Output Port"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "app_data": {
+        "ui_data": {
+          "comments": []
+        },
+        "version": 8,
+        "runtime_type": "KUBEFLOW_PIPELINES",
+        "properties": {
+          "name": "model-lifecycle",
+          "runtime": "Pipelines",
+          "pipeline_defaults": {
+            "kubernetes_shared_mem_size": {},
+            "mounted_volumes": [
+              {
+                "path": "/mnt",
+                "pvc_name": "pipeline-pvc",
+                "read_only": false
+              }
+            ],
+            "kubernetes_pod_annotations": [],
+            "kubernetes_pod_labels": [],
+            "kubernetes_tolerations": [],
+            "env_vars": [],
+            "kubernetes_secrets": [],
+            "runtime_image": "image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/pytorch:2025.2"
+          }
+        }
+      },
+      "runtime_ref": ""
+    }
+  ],
+  "schemas": []
+}
